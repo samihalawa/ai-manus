@@ -1,12 +1,12 @@
 {
   "task_type": "test",
-  "title": "Add tests for complex function in token_service.py",
-  "description": "**Complex Function Needs Testing**\n\nFile: /Users/samihalawa/git/PROJECTS_CODING/ai-manus/backend/app/application/services/token_service.py\nFunction: create_access_token\nComplexity: 2\nLines: 26\n\nThis complex function should have comprehensive test coverage to ensure reliability.",
+  "title": "Add tests for complex function in agent_service.py",
+  "description": "**Complex Function Needs Testing**\n\nFile: /Users/samihalawa/git/PROJECTS_CODING/ai-manus/backend/app/application/services/agent_service.py\nFunction: __init__\nComplexity: 1\nLines: 29\n\nThis complex function should have comprehensive test coverage to ensure reliability.",
   "execution_mode": "ExecutionMode.AGENT",
   "agent_type": "AgentType.GENERAL_PURPOSE",
   "agent_fallback": true,
   "context": {
-    "work_item_id": "0dabd206-099a-41fa-a371-bd249c323023",
+    "work_item_id": "59f43ef4-905b-434c-8710-a1b615cd2035",
     "source_type": "test_coverage",
     "priority": 4,
     "attempts": 1,
@@ -17,18 +17,18 @@
       "test_analysis": {
         "work_type": "test_complex_function",
         "details": {
-          "file_path": "/Users/samihalawa/git/PROJECTS_CODING/ai-manus/backend/app/application/services/token_service.py",
-          "function_name": "create_access_token",
-          "complexity": 2,
-          "line_count": 26,
-          "line_number": 21
+          "file_path": "/Users/samihalawa/git/PROJECTS_CODING/ai-manus/backend/app/application/services/agent_service.py",
+          "function_name": "__init__",
+          "complexity": 1,
+          "line_count": 29,
+          "line_number": 29
         },
-        "discovered_at": "2025-11-05T19:53:43.205473",
+        "discovered_at": "2025-11-05T23:44:59.388294",
         "source_type": "test_coverage"
       }
     }
   },
-  "timestamp": "2025-11-05T20:03:08.304582",
+  "timestamp": "2025-11-05T23:44:59.429895",
   "sugar_version": "2.1.0",
   "continue_session": false,
   "timeout_seconds": 1800,

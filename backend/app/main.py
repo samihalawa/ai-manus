@@ -27,27 +27,38 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     # Code executed on startup
     logger.info("Application startup - Manus AI Agent initializing")
-    
-    # Initialize MongoDB and Beanie
-    await get_mongodb().initialize()
 
-    # Initialize Beanie
-    await init_beanie(
-        database=get_mongodb().client[settings.mongodb_database],
-        document_models=[AgentDocument, SessionDocument, UserDocument]
-    )
-    logger.info("Successfully initialized Beanie")
-    
-    # Initialize Redis
-    await get_redis().initialize()
-    
+    # Initialize MongoDB and Beanie (optional for Cloud Run deployment)
+    try:
+        await get_mongodb().initialize()
+        # Initialize Beanie
+        await init_beanie(
+            database=get_mongodb().client[settings.mongodb_database],
+            document_models=[AgentDocument, SessionDocument, UserDocument]
+        )
+        logger.info("Successfully initialized Beanie")
+    except Exception as e:
+        logger.warning(f"MongoDB initialization failed (optional): {e}")
+        logger.info("Running without MongoDB - some features may be limited")
+
+    # Initialize Redis (optional)
+    try:
+        await get_redis().initialize()
+        logger.info("Successfully initialized Redis")
+    except Exception as e:
+        logger.warning(f"Redis initialization failed (optional): {e}")
+        logger.info("Running without Redis - some features may be limited")
+
     try:
         yield
     finally:
         # Code executed on shutdown
         logger.info("Application shutdown - Manus AI Agent terminating")
         # Disconnect from MongoDB
-        await get_mongodb().shutdown()
+        try:
+            await get_mongodb().shutdown()
+        except:
+            pass
         # Disconnect from Redis
         await get_redis().shutdown()
 
