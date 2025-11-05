@@ -1,12 +1,12 @@
 {
   "task_type": "test",
-  "title": "Add tests for complex function in agent_service.py",
-  "description": "**Complex Function Needs Testing**\n\nFile: /Users/samihalawa/git/PROJECTS_CODING/ai-manus/backend/app/application/services/agent_service.py\nFunction: __init__\nComplexity: 1\nLines: 29\n\nThis complex function should have comprehensive test coverage to ensure reliability.",
+  "title": "Add tests for complex function in email_service.py",
+  "description": "**Complex Function Needs Testing**\n\nFile: /Users/samihalawa/git/PROJECTS_CODING/ai-manus/backend/app/application/services/email_service.py\nFunction: _create_verification_email\nComplexity: 2\nLines: 23\n\nThis complex function should have comprehensive test coverage to ensure reliability.",
   "execution_mode": "ExecutionMode.AGENT",
   "agent_type": "AgentType.GENERAL_PURPOSE",
   "agent_fallback": true,
   "context": {
-    "work_item_id": "d073a2f3-ed91-4f1f-bada-39ffb8c130b5",
+    "work_item_id": "f461ead9-8ae4-4431-a70f-c9c44940e245",
     "source_type": "test_coverage",
     "priority": 4,
     "attempts": 1,
@@ -17,18 +17,18 @@
       "test_analysis": {
         "work_type": "test_complex_function",
         "details": {
-          "file_path": "/Users/samihalawa/git/PROJECTS_CODING/ai-manus/backend/app/application/services/agent_service.py",
-          "function_name": "__init__",
-          "complexity": 1,
-          "line_count": 29,
-          "line_number": 29
+          "file_path": "/Users/samihalawa/git/PROJECTS_CODING/ai-manus/backend/app/application/services/email_service.py",
+          "function_name": "_create_verification_email",
+          "complexity": 2,
+          "line_count": 23,
+          "line_number": 82
         },
-        "discovered_at": "2025-11-05T19:53:43.205423",
+        "discovered_at": "2025-11-05T19:53:43.205468",
         "source_type": "test_coverage"
       }
     }
   },
-  "timestamp": "2025-11-05T19:53:43.903126",
+  "timestamp": "2025-11-05T19:59:43.805797",
   "sugar_version": "2.1.0",
   "continue_session": false,
   "timeout_seconds": 1800,
