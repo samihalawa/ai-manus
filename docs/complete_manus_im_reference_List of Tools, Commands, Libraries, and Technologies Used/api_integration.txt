@@ -1,0 +1,9 @@
+No local server running on port 8000
+OPENAI_API_KEY=sk-AxVYPmezGGQBYzz7iB9XZm
+GH_TOKEN=
+OPENAI_BASE_URL=https://api.manus.im/api/llm-proxy/v1
+APP_DOMAIN=manus.im,manus.ai
+RUNTIME_API_HOST=https://api.manus.im
+OPENAI_API_BASE=https://api.manus.im/api/llm-proxy/v1
+CODE_SERVER_DOMAIN=manusvm.computer
+DEPLOY_WASMER_OWNER=manus
