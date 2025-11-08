@@ -2,8 +2,8 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install curl
-RUN apt-get update && apt-get install -y curl
+# Install curl and wget
+RUN apt-get update && apt-get install -y curl wget
 
 # Install uv
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
@@ -11,6 +11,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 
 # Install uv
 RUN pip install uv
+
+# Install cloudflared for ExposeTool support
+RUN wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && \
+    dpkg -i cloudflared-linux-amd64.deb && \
+    rm cloudflared-linux-amd64.deb
 
 # Configure uv to use Aliyun mirror
 ENV UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
