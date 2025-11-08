@@ -211,7 +211,7 @@ class ExposeTool(BaseTool):
         else:
             # Fallback to mock URL if cloudflared unavailable
             unique_id = str(uuid.uuid4())[:8]
-            public_url = f"https://{port}-{unique_id}.manusvm.computer"
+            public_url = f"https://{port}-{unique_id}.apps.pime.ai"
             method = "mock"
 
             # Store the mapping
