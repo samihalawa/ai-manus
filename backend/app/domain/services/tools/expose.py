@@ -58,22 +58,25 @@ class ExposeTool(BaseTool):
                 stderr=asyncio.subprocess.PIPE
             )
 
-            # Wait for tunnel URL to be generated (max 10 seconds)
+            # Wait for tunnel URL to be generated (max 20 seconds)
             url_pattern = re.compile(r'https://[a-z0-9-]+\.trycloudflare\.com')
-            timeout = 10
+            timeout = 20
 
-            async def read_output():
-                """Read output until URL is found or timeout"""
+            async def read_from_stream(stream, stream_name):
+                """Read from a stream until URL is found"""
                 try:
                     while True:
                         line = await asyncio.wait_for(
-                            process.stderr.readline(),
+                            stream.readline(),
                             timeout=1.0
                         )
                         if not line:
                             break
 
                         line_str = line.decode('utf-8')
+                        # Log output for debugging
+                        print(f"[cloudflared {stream_name}] {line_str.strip()}")
+
                         match = url_pattern.search(line_str)
                         if match:
                             return match.group(0)
@@ -81,24 +84,52 @@ class ExposeTool(BaseTool):
                     pass
                 return None
 
+            async def read_output():
+                """Read from both stdout and stderr until URL is found"""
+                # Read from both streams concurrently
+                stdout_task = asyncio.create_task(read_from_stream(process.stdout, "stdout"))
+                stderr_task = asyncio.create_task(read_from_stream(process.stderr, "stderr"))
+
+                # Wait for either stream to find the URL
+                done, pending = await asyncio.wait(
+                    {stdout_task, stderr_task},
+                    return_when=asyncio.FIRST_COMPLETED,
+                    timeout=timeout
+                )
+
+                # Cancel pending tasks
+                for task in pending:
+                    task.cancel()
+
+                # Check if we got a URL from any completed task
+                for task in done:
+                    url = task.result()
+                    if url:
+                        return url
+
+                return None
+
             # Try to get URL with timeout
             try:
                 url = await asyncio.wait_for(read_output(), timeout=timeout)
                 if url:
+                    print(f"[cloudflared] Successfully extracted URL: {url}")
                     return {
                         "url": url,
                         "process": process,
                         "method": "cloudflared"
                     }
+                else:
+                    print("[cloudflared] Failed to extract URL from output")
             except asyncio.TimeoutError:
-                pass
+                print("[cloudflared] Timeout waiting for tunnel URL")
 
             # If we couldn't get URL, terminate process
             process.terminate()
             await process.wait()
 
         except Exception as e:
-            pass
+            print(f"[cloudflared] Exception creating tunnel: {e}")
 
         return None
 
@@ -209,10 +240,10 @@ class ExposeTool(BaseTool):
                 }
             )
         else:
-            # Fallback to mock URL if cloudflared unavailable
+            # Fallback to spaces.pime.ai reverse proxy URL
             unique_id = str(uuid.uuid4())[:8]
-            public_url = f"https://{port}-{unique_id}.apps.pime.ai"
-            method = "mock"
+            public_url = f"https://{unique_id}-{port}.spaces.pime.ai"
+            method = "reverse_proxy"
 
             # Store the mapping
             self._port_mappings[port] = {
@@ -223,17 +254,20 @@ class ExposeTool(BaseTool):
                 "port": str(port)
             }
 
-            warning = "⚠️  Cloudflared not available - using mock URL for testing"
+            warning = "⚠️  Cloudflared not available - using reverse proxy fallback"
             if not cloudflared_available:
-                warning += "\n   Install cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/"
+                warning += "\n   Install cloudflared for reliable tunnels: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/"
 
             msg_parts = [
-                f"⚠️  Exposed port {port} with MOCK URL (testing only)",
-                f"🔗 Mock URL: {public_url}",
+                f"✅ Exposed port {port} via reverse proxy",
+                f"🔗 Public URL: {public_url}",
                 "",
                 warning,
                 "",
-                "Note: Ensure your application is bound to 0.0.0.0 to be accessible"
+                "⚠️  Important:",
+                "  • Ensure your application binds to 0.0.0.0 (not localhost)",
+                "  • Reverse proxy requires Nginx configuration to be active",
+                "  • For production use, install cloudflared for reliable tunnels"
             ]
 
             if description:
