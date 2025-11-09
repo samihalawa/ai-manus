@@ -46,6 +46,71 @@ class ExposeTool(BaseTool):
 
         return self._cloudflared_available
 
+    async def _detect_container_ip(self, port: int) -> str:
+        """Detect the Docker container IP for a service running on the specified port
+
+        Args:
+            port: Port number where the service is running
+
+        Returns:
+            Container IP address or "127.0.0.1" if not found
+        """
+        try:
+            # Find containers with the port listening (sandbox containers)
+            process = await asyncio.create_subprocess_exec(
+                'docker', 'ps', '--format', '{{.Names}}',
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, _ = await process.communicate()
+
+            if process.returncode != 0:
+                print(f"[ExposeTool] Failed to list Docker containers")
+                return "127.0.0.1"
+
+            # Look for sandbox containers
+            containers = stdout.decode('utf-8').strip().split('\n')
+            sandbox_containers = [c for c in containers if c.startswith('manus-sandbox-')]
+
+            if not sandbox_containers:
+                print(f"[ExposeTool] No sandbox containers found")
+                return "127.0.0.1"
+
+            # Check each sandbox container for the port
+            for container in sandbox_containers:
+                # Check if this container has the port listening
+                check_process = await asyncio.create_subprocess_exec(
+                    'docker', 'exec', container, 'sh', '-c',
+                    f'netstat -tln 2>/dev/null | grep ":{port} " || ss -tln 2>/dev/null | grep ":{port} "',
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                check_stdout, _ = await check_process.communicate()
+
+                if check_stdout:
+                    # Found the container with the port, get its IP
+                    ip_process = await asyncio.create_subprocess_exec(
+                        'docker', 'inspect', '-f',
+                        '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}',
+                        container,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    ip_stdout, _ = await ip_process.communicate()
+
+                    if ip_process.returncode == 0:
+                        container_ip = ip_stdout.decode('utf-8').strip()
+                        if container_ip:
+                            print(f"[ExposeTool] Detected container {container} at {container_ip}:{port}")
+                            return container_ip
+
+            print(f"[ExposeTool] Could not find container IP for port {port}, using localhost")
+            return "127.0.0.1"
+
+        except Exception as e:
+            print(f"[ExposeTool] Error detecting container IP: {e}")
+            return "127.0.0.1"
+
     async def _create_cloudflared_tunnel(self, port: int) -> Optional[Dict[str, any]]:
         """Create a cloudflared tunnel for the specified port
 
@@ -251,6 +316,9 @@ class ExposeTool(BaseTool):
             public_url = f"https://{unique_id}.manus.you"
             method = "reverse_proxy"
 
+            # Detect container IP for the port
+            container_ip = await self._detect_container_ip(port)
+
             # Store mapping in shared file for Nginx lookup
             mapping_file = "/tmp/manus_port_mappings.json"
             try:
@@ -261,18 +329,19 @@ class ExposeTool(BaseTool):
                 else:
                     all_mappings = {}
 
-                # Add new mapping
+                # Add new mapping with container IP
                 all_mappings[unique_id] = {
                     "port": port,
                     "created": datetime.now().isoformat(),
-                    "description": description or f"Service on port {port}"
+                    "description": description or f"Service on port {port}",
+                    "container_ip": container_ip
                 }
 
                 # Save updated mappings
                 with open(mapping_file, 'w') as f:
                     json.dump(all_mappings, f, indent=2)
 
-                print(f"[ExposeTool] Saved mapping: {unique_id} -> port {port}")
+                print(f"[ExposeTool] Saved mapping: {unique_id} -> {container_ip}:{port}")
             except Exception as e:
                 print(f"[ExposeTool] Warning: Failed to save mapping file: {e}")
 
