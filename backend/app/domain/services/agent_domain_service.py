@@ -160,7 +160,7 @@ class AgentDomainService:
             logger.debug(f"Session {session_id} task: {task}")
            
             while task and not task.done:
-                event_id, event_str = await task.output_stream.get(start_id=latest_event_id, block_ms=0)
+                event_id, event_str = await task.output_stream.get(start_id=latest_event_id, block_ms=1000)
                 latest_event_id = event_id
                 if event_str is None:
                     logger.debug(f"No event found in Session {session_id}'s event queue")
