@@ -3,6 +3,11 @@ from typing import Dict, Optional
 import uuid
 import asyncio
 import re
+import random
+import string
+import json
+import os
+from datetime import datetime
 from app.domain.services.tools.base import tool, BaseTool
 from app.domain.models.tool_result import ToolResult
 
@@ -240,12 +245,38 @@ class ExposeTool(BaseTool):
                 }
             )
         else:
-            # Fallback to spaces.pime.ai reverse proxy URL
-            unique_id = str(uuid.uuid4())[:8]
-            public_url = f"https://{unique_id}-{port}.spaces.pime.ai"
+            # Fallback to manus.you reverse proxy URL (clean URL like real Manus)
+            # Generate 12-character random ID (lowercase + digits)
+            unique_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=12))
+            public_url = f"https://{unique_id}.manus.you"
             method = "reverse_proxy"
 
-            # Store the mapping
+            # Store mapping in shared file for Nginx lookup
+            mapping_file = "/tmp/manus_port_mappings.json"
+            try:
+                # Load existing mappings
+                if os.path.exists(mapping_file):
+                    with open(mapping_file, 'r') as f:
+                        all_mappings = json.load(f)
+                else:
+                    all_mappings = {}
+
+                # Add new mapping
+                all_mappings[unique_id] = {
+                    "port": port,
+                    "created": datetime.now().isoformat(),
+                    "description": description or f"Service on port {port}"
+                }
+
+                # Save updated mappings
+                with open(mapping_file, 'w') as f:
+                    json.dump(all_mappings, f, indent=2)
+
+                print(f"[ExposeTool] Saved mapping: {unique_id} -> port {port}")
+            except Exception as e:
+                print(f"[ExposeTool] Warning: Failed to save mapping file: {e}")
+
+            # Store the mapping in memory
             self._port_mappings[port] = {
                 "url": public_url,
                 "unique_id": unique_id,
@@ -254,20 +285,20 @@ class ExposeTool(BaseTool):
                 "port": str(port)
             }
 
-            warning = "⚠️  Cloudflared not available - using reverse proxy fallback"
+            warning = "⚠️  Cloudflared not available - using manus.you reverse proxy"
             if not cloudflared_available:
                 warning += "\n   Install cloudflared for reliable tunnels: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/"
 
             msg_parts = [
-                f"✅ Exposed port {port} via reverse proxy",
+                f"✅ Exposed port {port} via manus.you",
                 f"🔗 Public URL: {public_url}",
                 "",
                 warning,
                 "",
                 "⚠️  Important:",
                 "  • Ensure your application binds to 0.0.0.0 (not localhost)",
-                "  • Reverse proxy requires Nginx configuration to be active",
-                "  • For production use, install cloudflared for reliable tunnels"
+                "  • URL format: {random-12-char}.manus.you (clean, no port in URL)",
+                "  • Port routing handled by Nginx via shared mapping file"
             ]
 
             if description:
