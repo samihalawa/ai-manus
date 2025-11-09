@@ -177,7 +177,10 @@ class AgentTaskRunner(TaskRunner):
                     if "file" in event.function_args:
                         file_path = event.function_args["file"]
                         file_read_result = await self._sandbox.file_read(file_path)
-                        file_content: str = file_read_result.data.get("content", "")
+                        if file_read_result.data:
+                            file_content: str = file_read_result.data.get("content", "")
+                        else:
+                            file_content = f"(Failed to read file: {file_read_result.message})"
                         event.tool_content = FileToolContent(content=file_content)
                         await self._sync_file_to_storage(file_path)
                     else:
