@@ -74,13 +74,22 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Manus AI Agent", lifespan=lifespan)
 
-# Configure CORS
+# Configure CORS with security-aware origins
+cors_origins = settings.cors_origins_list if settings.cors_origins_list else ["*"]
+if cors_origins == ["*"] and settings.is_production:
+    logger.warning(
+        "CORS is configured to allow all origins in production. "
+        "Consider setting CORS_ORIGINS to specific allowed domains."
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept"],
+    expose_headers=["Content-Disposition", "Content-Length"],
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # Register exception handlers

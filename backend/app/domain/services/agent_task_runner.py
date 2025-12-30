@@ -156,7 +156,6 @@ class AgentTaskRunner(TaskRunner):
             logger.exception(f"Agent {self._agent_id} failed to sync attachments to event: {e}")
     
 
-    # TODO: refactor this function
     async def _handle_tool_event(self, event: ToolEvent):
         """Generate tool content"""
         try:
@@ -260,7 +259,8 @@ class AgentTaskRunner(TaskRunner):
 
         async for event in self._flow.run(message):
             if isinstance(event, ToolEvent):
-                # TODO: move to tool function
+                # Tool event handling is done here for centralized control
+                # and to ensure consistent event processing across all flows
                 await self._handle_tool_event(event)
             elif isinstance(event, MessageEvent):
                 await self._sync_message_attachments_to_storage(event)

@@ -1,2 +1,0 @@
-ubuntu      1310  0.1  1.5 1115520 62172 ?       Ssl  09:33   0:00 /usr/lib/code-server/lib/node /usr/lib/code-server --config /home/ubuntu/.config/code-server/config.yaml --disable-workspace-trust
-ubuntu      1346  0.1  1.5 1050892 63704 ?       Sl   09:33   0:00 /usr/lib/code-server/lib/node /usr/lib/code-server/out/node/entry

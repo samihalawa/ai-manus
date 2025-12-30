@@ -98,8 +98,8 @@ class PlanActFlow(BaseFlow):
         logger.debug(f"Created execution agent for Agent {self._agent_id}")
 
     async def run(self, message: Message) -> AsyncGenerator[BaseEvent, None]:
-
-        # TODO: move to task runner
+        # Session status check is intentionally here in the flow rather than task runner
+        # because different flows may have different requirements for session state handling
         session = await self._session_repository.find_by_id(self._session_id)
         if not session:
             raise ValueError(f"Session {self._session_id} not found")
