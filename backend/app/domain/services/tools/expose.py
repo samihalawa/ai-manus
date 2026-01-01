@@ -111,6 +111,66 @@ class ExposeTool(BaseTool):
             print(f"[ExposeTool] Error detecting container IP: {e}")
             return "127.0.0.1"
 
+    async def _create_cloudflare_dns_record(self, subdomain: str, target_ip: str) -> bool:
+        """Create a Cloudflare DNS A record for the subdomain
+
+        Args:
+            subdomain: Subdomain to create (e.g., "8000-abc123")
+            target_ip: Target IP address (VM external IP)
+
+        Returns:
+            True if DNS record created successfully, False otherwise
+        """
+        try:
+            import aiohttp
+
+            # Get Cloudflare credentials from environment
+            api_token = os.getenv('CLOUDFLARE_API_TOKEN')
+            zone_id = os.getenv('CLOUDFLARE_ZONE_ID')
+            domain = os.getenv('CLOUDFLARE_DOMAIN', 'manus.expert')
+
+            if not api_token or not zone_id:
+                print("[ExposeTool] Missing Cloudflare credentials in environment")
+                return False
+
+            # Construct full domain name
+            full_domain = f"{subdomain}.{domain}"
+
+            # Create DNS record via Cloudflare API
+            url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records"
+            headers = {
+                "Authorization": f"Bearer {api_token}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "type": "A",
+                "name": subdomain,
+                "content": target_ip,
+                "ttl": 60,  # 1 minute TTL for quick updates
+                "proxied": False  # Direct connection, no Cloudflare proxy
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, headers=headers, json=data) as response:
+                    result = await response.json()
+
+                    if response.status == 200 and result.get('success'):
+                        print(f"[ExposeTool] Created DNS record: {full_domain} -> {target_ip}")
+                        return True
+                    else:
+                        errors = result.get('errors', [])
+                        # Check if record already exists (error code 81057)
+                        if any(err.get('code') == 81057 for err in errors):
+                            print(f"[ExposeTool] DNS record already exists: {full_domain}")
+                            return True
+
+                        print(f"[ExposeTool] Failed to create DNS record: {result}")
+                        return False
+
+        except Exception as e:
+            print(f"[ExposeTool] Error creating Cloudflare DNS record: {e}")
+            return False
+
     async def _create_cloudflared_tunnel(self, port: int) -> Optional[Dict[str, any]]:
         """Create a cloudflared tunnel for the specified port
 
@@ -310,11 +370,18 @@ class ExposeTool(BaseTool):
                 }
             )
         else:
-            # Fallback to manus.you reverse proxy URL (clean URL like real Manus)
-            # Generate 12-character random ID (lowercase + digits)
+            # Fallback to manus.expert reverse proxy URL (clean URL like real Manus)
+            # Generate port-id pattern to match nginx config: {port}-{randomid}.manus.expert
             unique_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=12))
-            public_url = f"https://{unique_id}.manus.you"
+            subdomain = f"{port}-{unique_id}"
+            public_url = f"http://{subdomain}.manus.expert"
             method = "reverse_proxy"
+
+            # Get VM external IP for DNS record
+            vm_external_ip = os.getenv('VM_EXTERNAL_IP', '34.59.167.52')
+
+            # Create Cloudflare DNS record for this subdomain
+            dns_created = await self._create_cloudflare_dns_record(subdomain, vm_external_ip)
 
             # Detect container IP for the port
             container_ip = await self._detect_container_ip(port)
@@ -354,21 +421,31 @@ class ExposeTool(BaseTool):
                 "port": str(port)
             }
 
-            warning = "⚠️  Cloudflared not available - using manus.you reverse proxy"
+            warning = "⚠️  Cloudflared not available - using manus.expert reverse proxy"
             if not cloudflared_available:
                 warning += "\n   Install cloudflared for reliable tunnels: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/"
 
             msg_parts = [
-                f"✅ Exposed port {port} via manus.you",
+                f"✅ Exposed port {port} via manus.expert",
                 f"🔗 Public URL: {public_url}",
+                "",
+            ]
+
+            # Add DNS status
+            if dns_created:
+                msg_parts.append("✅ DNS record created successfully - URL is publicly accessible")
+            else:
+                msg_parts.append("⚠️  DNS record creation skipped - URL only works via /etc/hosts")
+
+            msg_parts.extend([
                 "",
                 warning,
                 "",
                 "⚠️  Important:",
                 "  • Ensure your application binds to 0.0.0.0 (not localhost)",
-                "  • URL format: {random-12-char}.manus.you (clean, no port in URL)",
-                "  • Port routing handled by Nginx via shared mapping file"
-            ]
+                "  • URL format: {port}-{random-12-char}.manus.expert",
+                "  • Port routing handled by Nginx regex extraction"
+            ])
 
             if description:
                 msg_parts.insert(1, f"📝 Service: {description}")
